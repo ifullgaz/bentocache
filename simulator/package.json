@@ -58,7 +58,7 @@
     "@japa/plugin-adonisjs": "^4.0.0",
     "@japa/runner": "^4.4.0",
     "@swc/core": "1.10.16",
-    "@types/node": "^25.0.3",
+    "@types/node": "^25.5.0",
     "@unocss/reset": "^66.5.11",
     "@vitejs/plugin-vue": "^6.0.3",
     "hot-hook": "^0.4.0",

@@ -163,8 +163,9 @@ export class BentoCacheInstrumentation extends InstrumentationBase<BentoCacheIns
     // getOrSet operations themselves always use the current context to avoid
     // chaining concurrent getOrSet calls for the same key into a nested hierarchy.
     const isGetOrSet = message.operation === 'getOrSet'
-    const parentContext =
-      !isGetOrSet ? (this.#activeContexts.get(contextKey) ?? context.active()) : context.active()
+    const parentContext = !isGetOrSet
+      ? (this.#activeContexts.get(contextKey) ?? context.active())
+      : context.active()
     const parentSpan = trace.getSpan(parentContext)
 
     if (config.requireParentSpan && !parentSpan) return
