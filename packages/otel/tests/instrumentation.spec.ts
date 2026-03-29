@@ -94,6 +94,38 @@ test.group('BentoCacheInstrumentation', () => {
     assert.isTrue(customNames.includes('custom.get'))
   })
 
+  test('concurrent getOrSet calls with the same key produce sibling spans, not nested', async ({
+    assert,
+    cleanup,
+  }) => {
+    const { exporter, bentocacheModule } = await setupInstrumentation(
+      cleanup,
+      { includeKeys: true, requireParentSpan: false },
+      'modulePatch',
+    )
+    const store = createMemoryStore(bentocacheModule)
+
+    await Promise.all([
+      store.getOrSet({ key: 'same-key', ttl: '10s', factory: async () => 'a' }),
+      store.getOrSet({ key: 'same-key', ttl: '10s', factory: async () => 'b' }),
+      store.getOrSet({ key: 'same-key', ttl: '10s', factory: async () => 'c' }),
+    ])
+
+    const spans = exporter.getFinishedSpans()
+    const getOrSetSpans = spans.filter((span) => span.name === 'cache.getOrSet')
+
+    assert.isTrue(getOrSetSpans.length >= 3)
+
+    // None of the getOrSet spans should be parented to another getOrSet span
+    const getOrSetSpanIds = new Set(getOrSetSpans.map((s) => s.spanContext().spanId))
+    for (const span of getOrSetSpans) {
+      assert.isFalse(
+        getOrSetSpanIds.has(span.parentSpanContext?.spanId ?? ''),
+        `getOrSet span should not be a child of another getOrSet span`,
+      )
+    }
+  })
+
   test('sanitizes keys and keeps getOrSet child spans parented to getOrSet span', async ({
     assert,
     cleanup,

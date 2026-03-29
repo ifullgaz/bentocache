@@ -159,8 +159,12 @@ export class BentoCacheInstrumentation extends InstrumentationBase<BentoCacheIns
     const config = this.getConfig()
     const contextKey = `${message.store}:${message.key}`
 
-    // Child operations (factory, set) use the active getOrSet context as parent
-    const parentContext = this.#activeContexts.get(contextKey) ?? context.active()
+    // Only child operations (factory, set) use the active getOrSet context as parent.
+    // getOrSet operations themselves always use the current context to avoid
+    // chaining concurrent getOrSet calls for the same key into a nested hierarchy.
+    const isGetOrSet = message.operation === 'getOrSet'
+    const parentContext =
+      !isGetOrSet ? (this.#activeContexts.get(contextKey) ?? context.active()) : context.active()
     const parentSpan = trace.getSpan(parentContext)
 
     if (config.requireParentSpan && !parentSpan) return
@@ -177,9 +181,8 @@ export class BentoCacheInstrumentation extends InstrumentationBase<BentoCacheIns
 
     this.spans.set(message, span)
 
-    // Store the context for getOrSet so child spans can parent to it
-    if (message.operation === 'getOrSet') {
-      this.#activeContexts.set(contextKey, trace.setSpan(parentContext, span))
+    if (isGetOrSet) {
+      this.#activeContexts.set(contextKey, trace.setSpan(context.active(), span))
     }
   }
 
